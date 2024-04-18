@@ -1,0 +1,253 @@
+<html lang="zh-CN"><head><meta charset="UTF-8"><style>.nodata  main {width:1000px;margin: auto;}</style></head><body class="nodata " style=""><div class="main_father clearfix d-flex justify-content-center " style="height:100%;"> <div class="container clearfix " id="mainBox"><main><div class="blog-content-box">
+<div class="article-header-box">
+<div class="article-header">
+<div class="article-title-box">
+<h1 class="title-article" id="articleContentId">Druid 加密配置</h1>
+</div>
+
+</div>
+</div>
+<div id="blogHuaweiyunAdvert"></div>
+<article class="baidu_pl">
+<div class="article_content clearfix" id="article_content">
+<link href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/kdoc_html_views-1a98987dfd.css" rel="stylesheet"/>
+<link href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/ck_htmledit_views-044f2cf1dc.css" rel="stylesheet"/>
+<div class="markdown_views prism-atom-one-dark" id="content_views">
+<svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+<path d="M5,0 0,2.5 5,5z" id="raphael-marker-block" stroke-linecap="round" style="-webkit-tap-highlight-color: rgba(0, 0, 0, 0);"></path>
+</svg>
+<p></p>
+<div class="toc">
+<h4>Druid 加密配置</h4>
+<ul><li><a href="#_2" rel="nofollow">前言</a></li><li><a href="#_7" rel="nofollow">总结</a></li><li><a href="#_16" rel="nofollow">具体步骤</a></li><li><ul><li><a href="#1__17" rel="nofollow">1. 生产密钥</a></li><li><a href="#2__20" rel="nofollow">2. 环境配置</a></li><li><ul><li><a href="#1____24" rel="nofollow">1. 依赖配置:</a></li><li><a href="#2_druidspring_106" rel="nofollow">2. druid和spring配置:</a></li></ul>
+</li><li><a href="#3_druid_203" rel="nofollow">3. druid实现原理</a></li></ul>
+</li><li><a href="#_208" rel="nofollow">相关错误</a></li><li><a href="#_233" rel="nofollow">参考资料</a></li></ul>
+</div>
+<p></p>
+<h2><a id="_2"></a>前言</h2>
+<p>一般来说, 链接数据库的密码是明文存放的, 这样不安全, 任意获取到密码配置的人都可以获取到数据库的连接密码, 导致不安全的产生. druid有密码加密功能, 可以解决这个问题. druid使用rsa加密方式进行密码保护.(并不规范: 在后续问题中会讲)</p>
+<h2><a id="_7"></a>总结</h2>
+<p>要配置druid密钥,<br/> a. 配置connectionProperties属性: config.decrypt=true;config.decrypt.key=公钥<br/> b. spring.datasource.password设置用私钥加密后的密码<br/> 注意:</p>
+<ol><li><strong>尽量不要用 druid自带的加密解密方式</strong>, 可以在 druid的自定义配置类里面加上自己的解密方法.</li><li>如果<strong>一定要用druid自带的rsa加密解密方式</strong>, 请不要用自带的默认公钥/私钥</li><li>另外druid自带的加密, 可以使用自定义"com.alibaba.druid.util.DruidPasswordCallback", 来实现<strong>自己的加密解密实现</strong>.</li></ol>
+<h2><a id="_16"></a>具体步骤</h2>
+<h3><a id="1__17"></a>1. 生产密钥</h3>
+<p>参考资料: 1. druid加密测试类</p>
+<h3><a id="2__20"></a>2. 环境配置</h3>
+<p>这里主要有1. 依赖配置. 2. 参数配置.</p>
+<h4><a id="1____24"></a>1. 依赖配置:</h4>
+<pre><code class="prism language-xml"><span class="token prolog">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>project</span> <span class="token attr-name">xmlns</span><span class="token attr-value"><span class="token punctuation">=</span><span class="token punctuation">"</span>http://maven.apache.org/POM/4.0.0<span class="token punctuation">"</span></span> <span class="token attr-name"><span class="token namespace">xmlns:</span>xsi</span><span class="token attr-value"><span class="token punctuation">=</span><span class="token punctuation">"</span>http://www.w3.org/2001/XMLSchema-instance<span class="token punctuation">"</span></span>
+        <span class="token attr-name"><span class="token namespace">xsi:</span>schemaLocation</span><span class="token attr-value"><span class="token punctuation">=</span><span class="token punctuation">"</span>http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd<span class="token punctuation">"</span></span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>modelVersion</span><span class="token punctuation">&gt;</span></span>4.0.0<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>modelVersion</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>parent</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-starter-parent<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>version</span><span class="token punctuation">&gt;</span></span>2.1.4.RELEASE<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>version</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>relativePath</span><span class="token punctuation">/&gt;</span></span>
+       <span class="token comment">&lt;!-- lookup parent from repository --&gt;</span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>parent</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>com.example<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-mybitis-demo<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>version</span><span class="token punctuation">&gt;</span></span>0.0.1-SNAPSHOT<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>version</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>packaging</span><span class="token punctuation">&gt;</span></span>war<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>packaging</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>name</span><span class="token punctuation">&gt;</span></span>spring-boot-mybitis-demo<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>name</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>description</span><span class="token punctuation">&gt;</span></span>Demo project for Spring Boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>description</span><span class="token punctuation">&gt;</span></span>
+
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>properties</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>project.build.sourceEncoding</span><span class="token punctuation">&gt;</span></span>UTF-8<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>project.build.sourceEncoding</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>project.reporting.outputEncoding</span><span class="token punctuation">&gt;</span></span>UTF-8<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>project.reporting.outputEncoding</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>java.version</span><span class="token punctuation">&gt;</span></span>1.8<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>java.version</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token comment">&lt;!-- 数据源 --&gt;</span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>druid</span><span class="token punctuation">&gt;</span></span>1.1.20<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>druid</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>properties</span><span class="token punctuation">&gt;</span></span>
+
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependencies</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-starter-web<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-configuration-processor<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>optional</span><span class="token punctuation">&gt;</span></span>true<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>optional</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-devtools<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>scope</span><span class="token punctuation">&gt;</span></span>runtime<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>scope</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>optional</span><span class="token punctuation">&gt;</span></span>true<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>optional</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-starter-test<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>scope</span><span class="token punctuation">&gt;</span></span>test<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>scope</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+
+       <span class="token comment">&lt;!-- Mysql 驱动--&gt;</span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>mysql<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>mysql-connector-java<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>scope</span><span class="token punctuation">&gt;</span></span>runtime<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>scope</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+        <span class="token comment">&lt;!-- H2 驱动--&gt;</span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>com.h2database<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>h2<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>scope</span><span class="token punctuation">&gt;</span></span>runtime<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>scope</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+		<span class="token comment">&lt;!-- Druid 数据连接池依赖 --&gt;</span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>com.alibaba<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>druid<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+   		<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>version</span><span class="token punctuation">&gt;</span></span>${druid}<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>version</span><span class="token punctuation">&gt;</span></span>
+   	<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependency</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>dependencies</span><span class="token punctuation">&gt;</span></span>
+
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>build</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>plugins</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>plugin</span><span class="token punctuation">&gt;</span></span>
+               <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>groupId</span><span class="token punctuation">&gt;</span></span>org.springframework.boot<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>groupId</span><span class="token punctuation">&gt;</span></span>
+               <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>artifactId</span><span class="token punctuation">&gt;</span></span>spring-boot-maven-plugin<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>artifactId</span><span class="token punctuation">&gt;</span></span>
+           <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>plugin</span><span class="token punctuation">&gt;</span></span>
+       <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>plugins</span><span class="token punctuation">&gt;</span></span>
+   <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>build</span><span class="token punctuation">&gt;</span></span>
+
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>project</span><span class="token punctuation">&gt;</span></span>
+
+</code></pre>
+<h4><a id="2_druidspring_106"></a>2. druid和spring配置:</h4>
+<p>需要特别说明的是, 我导入的不是druid-starter, spring boot不会自动注入druid的配置, 需要写个druidconfig类进行配置.<br/> 这里有2个关注点:</p>
+<ol><li>配置中的属性<strong>spring.datasource.password</strong></li></ol>
+<pre><code class="prism language-yml"><span class="token comment">#spring配置</span>
+<span class="token key atrule">spring</span><span class="token punctuation">:</span>
+<span class="token key atrule">devtools</span><span class="token punctuation">:</span>
+  <span class="token key atrule">restart</span><span class="token punctuation">:</span>
+    <span class="token key atrule">enabled</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+<span class="token comment">#数据源配置</span>
+<span class="token key atrule">datasource</span><span class="token punctuation">:</span>
+  <span class="token key atrule">driverClassName</span><span class="token punctuation">:</span> org.h2.Driver
+  <span class="token key atrule">url</span><span class="token punctuation">:</span> jdbc<span class="token punctuation">:</span>h2<span class="token punctuation">:</span>mem<span class="token punctuation">:</span>manage_db_test
+  <span class="token key atrule">username</span><span class="token punctuation">:</span> sa
+  <span class="token key atrule">password</span><span class="token punctuation">:</span> g31I5n/mlZBjZ3exuGppj12e9ofGUsTas12Xel4v+QB4uL04NqShZRLo1JqSLE9AjjdHgip/4p83GfQYdlf7VaIuVqbueSwIGSpqJu4eI/DKwdO6PqM4SUGoTXbkl4rbEC5SoNgOSZC+jk2PtFW3lEKBHXAkVWnvDAidD9Znd+GNMb7uHOYxKQxPkWyKI1eYYjAn9r70VAX5JYpCnINhcLG1p6EgzI0jXZSzyw2BW3eVdgaDfSHAYqL0inxGcvheXW65LuPHNbNSM2tK2md6mmG1U8GhAvUF/to3pax6QfJ7Lt1EEBb+fCKShQTFOO8i8bXV4TyIVkwlmxm3r9BnXA==
+  <span class="token key atrule">type</span><span class="token punctuation">:</span> com.alibaba.druid.pool.DruidDataSource
+</code></pre>
+<p>spring.datasource.password: 配置加密后的密码(私钥),省略</p>
+<ol start="2"><li>druid配置中的属性<strong>connectProperties</strong></li></ol>
+<pre><code class="prism language-yml"><span class="token key atrule">connectionProperties</span><span class="token punctuation">:</span> druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500;config.decrypt=true;config.decrypt.key=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4P05ueQepxMJdZtm73eFEmL0wTZb7XN+PL7qdvttPhRrgSPLyTGh4sELFCLurOBC2R/rTysJ0K8Z5wuC1N2RYZ+SRQIIa9FvdlO30VrCstfJUGKlsuOqFKqcdm4nG/qOOAu0OKX2MYiwCnoyNl9fLS4jb6I9aNFJRAzlkzKXTH2gVuQxTyKT9z08uMfuxi7BxrTTY9+Ypqp8hqHDo+mN4i1CFKBx0xmUEp9TasiFCPabdbX2KmoPpH2iZZrvg0wSIxwRN42fwmuz+vZYytxq8x0vqFMr2GTpqMCBLYI3Q4JT2YHIfNc7y1LaHJliogL9HlPqz0Aox087vOTjomuXxQIDAQAB
+</code></pre>
+<p>config.decrypt(开启druid自带加密,必须):开启加密: true<br/> config.decrypt.key(开启druid自带加密,必须):设置加密密钥(公钥),省略<br/> config.file(开启druid自带加密,可选): 可以设置配置文件,适合管理配置或集群配置, 比如: 1. 文件路径 2. 网络地址(集群配置)<br/> password(开启druid自带加密,可选): 密码配置, 可以在spring.datasource.password中不配置, 而在connectionProperties中配置</p>
+<p>以下是详细配置</p>
+<pre><code class="prism language-yml"><span class="token comment">#spring配置</span>
+<span class="token key atrule">spring</span><span class="token punctuation">:</span>
+ <span class="token key atrule">devtools</span><span class="token punctuation">:</span>
+   <span class="token key atrule">restart</span><span class="token punctuation">:</span>
+     <span class="token key atrule">enabled</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+ <span class="token comment">#数据源配置</span>
+ <span class="token key atrule">datasource</span><span class="token punctuation">:</span>
+   <span class="token key atrule">driverClassName</span><span class="token punctuation">:</span> org.h2.Driver
+   <span class="token key atrule">url</span><span class="token punctuation">:</span> jdbc<span class="token punctuation">:</span>h2<span class="token punctuation">:</span>mem<span class="token punctuation">:</span>manage_db_test
+   <span class="token key atrule">username</span><span class="token punctuation">:</span> sa
+   <span class="token key atrule">password</span><span class="token punctuation">:</span> g31I5n/mlZBjZ3exuGppj12e9ofGUsTas12Xel4v+QB4uL04NqShZRLo1JqSLE9AjjdHgip/4p83GfQYdlf7VaIuVqbueSwIGSpqJu4eI/DKwdO6PqM4SUGoTXbkl4rbEC5SoNgOSZC+jk2PtFW3lEKBHXAkVWnvDAidD9Znd+GNMb7uHOYxKQxPkWyKI1eYYjAn9r70VAX5JYpCnINhcLG1p6EgzI0jXZSzyw2BW3eVdgaDfSHAYqL0inxGcvheXW65LuPHNbNSM2tK2md6mmG1U8GhAvUF/to3pax6QfJ7Lt1EEBb+fCKShQTFOO8i8bXV4TyIVkwlmxm3r9BnXA==
+   <span class="token key atrule">type</span><span class="token punctuation">:</span> com.alibaba.druid.pool.DruidDataSource
+   <span class="token comment">##数据初始化设置</span>
+   <span class="token comment">#进行该配置后，每次启动程序，程序都会运行</span>
+   <span class="token key atrule">schema</span><span class="token punctuation">:</span> classpath<span class="token punctuation">:</span>db/schema.sql
+   <span class="token comment">#进行该配置后，每次启动程序，程序都会运行</span>
+   <span class="token key atrule">data</span><span class="token punctuation">:</span> classpath<span class="token punctuation">:</span>db/data.sql
+   <span class="token comment">#表明使用的数据库平台是h2</span>
+   <span class="token key atrule">platform</span><span class="token punctuation">:</span> h2
+   <span class="token comment">## druid 配置，Spring Boot 默认是不注入不了这些属性值的，需要自己绑定#druid 数据源专有配置</span>
+   <span class="token key atrule">druid</span><span class="token punctuation">:</span>
+     <span class="token key atrule">initialSize</span><span class="token punctuation">:</span> <span class="token number">5</span>
+     <span class="token key atrule">minIdle</span><span class="token punctuation">:</span> <span class="token number">5</span>
+     <span class="token key atrule">maxActive</span><span class="token punctuation">:</span> <span class="token number">20</span>
+     <span class="token comment"># 配置获取连接等待超时的时间</span>
+     <span class="token key atrule">maxWait</span><span class="token punctuation">:</span> <span class="token number">60000</span>
+     <span class="token comment"># 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒</span>
+     <span class="token key atrule">timeBetweenEvictionRunsMillis</span><span class="token punctuation">:</span> <span class="token number">60000</span>
+     <span class="token comment"># 配置一个连接在池中最小生存的时间，单位是毫秒</span>
+     <span class="token key atrule">minEvictableIdleTimeMillis</span><span class="token punctuation">:</span> <span class="token number">300000</span>
+     <span class="token key atrule">validationQuery</span><span class="token punctuation">:</span> SELECT 1 FROM DUAL
+     <span class="token comment">#申请连接的时候检测，建议配置为true，不影响性能，并且保证安全性</span>
+     <span class="token key atrule">testWhileIdle</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+     <span class="token comment">#获取连接时执行检测，建议关闭，影响性能</span>
+     <span class="token key atrule">testOnBorrow</span><span class="token punctuation">:</span> <span class="token boolean important">false</span>
+     <span class="token comment">#归还连接时执行检测，建议关闭，影响性能</span>
+     <span class="token key atrule">testOnReturn</span><span class="token punctuation">:</span> <span class="token boolean important">false</span>
+     <span class="token comment">#是否开启PSCache，PSCache对支持游标的数据库性能提升巨大，oracle建议开启，mysql下建议关闭</span>
+     <span class="token key atrule">poolPreparedStatements</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+     <span class="token comment">#开启poolPreparedStatements后生效</span>
+     <span class="token key atrule">maxPoolPreparedStatementPerConnectionSize</span><span class="token punctuation">:</span> <span class="token number">20</span>
+     <span class="token comment">#配置监控统计拦截的filters，stat:监控统计、log4j：日志记录、wall：防御sql注入，去掉后监控界面sql无法统计，'wall'用于防火墙</span>
+     <span class="token comment">#config是为了数据库加密</span>
+     <span class="token key atrule">filters</span><span class="token punctuation">:</span> stat<span class="token punctuation">,</span>wall<span class="token punctuation">,</span>log4j2<span class="token punctuation">,</span>config
+     <span class="token comment"># 合并多个DruidDataSource的监控数据 </span>
+     <span class="token key atrule">useGlobalDataSourceStat</span><span class="token punctuation">:</span> <span class="token boolean important">false</span>
+     <span class="token comment"># 通过connectProperties属性来打开mergeSql功能；慢SQL记录: 500毫秒</span>
+     <span class="token key atrule">connectionProperties</span><span class="token punctuation">:</span> <span class="token string">"druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500;config.decrypt=true;config.decrypt.key=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4P05ueQepxMJdZtm73eFEmL0wTZb7XN+PL7qdvttPhRrgSPLyTGh4sELFCLurOBC2R/rTysJ0K8Z5wuC1N2RYZ+SRQIIa9FvdlO30VrCstfJUGKlsuOqFKqcdm4nG/qOOAu0OKX2MYiwCnoyNl9fLS4jb6I9aNFJRAzlkzKXTH2gVuQxTyKT9z08uMfuxi7BxrTTY9+Ypqp8hqHDo+mN4i1CFKBx0xmUEp9TasiFCPabdbX2KmoPpH2iZZrvg0wSIxwRN42fwmuz+vZYytxq8x0vqFMr2GTpqMCBLYI3Q4JT2YHIfNc7y1LaHJliogL9HlPqz0Aox087vOTjomuXxQIDAQAB"</span>
+     <span class="token comment"># Druid StatViewServlet配置</span>
+     <span class="token key atrule">stat-view-servlet</span><span class="token punctuation">:</span>
+       <span class="token key atrule">enabled</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+       <span class="token key atrule">url-pattern</span><span class="token punctuation">:</span> /druid/*
+       <span class="token key atrule">reset-enable</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+       <span class="token key atrule">login-username</span><span class="token punctuation">:</span> admin
+       <span class="token key atrule">login-password</span><span class="token punctuation">:</span> admin
+       <span class="token key atrule">allow</span><span class="token punctuation">:</span> <span class="token string">'127.0.0.1,10.0.0.1'</span>
+       <span class="token key atrule">deny</span><span class="token punctuation">:</span> <span class="token string">'10.0.0.1'</span>
+     <span class="token comment"># Druid WebStatFilter配置</span>
+     <span class="token key atrule">web-stat-filter</span><span class="token punctuation">:</span>
+       <span class="token key atrule">enabled</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+       <span class="token key atrule">url-pattern</span><span class="token punctuation">:</span> /*
+       <span class="token key atrule">exclusions</span><span class="token punctuation">:</span> <span class="token string">'*.js,*.gif,*.jpg,*.png,*.css,*.ico,*.html'</span>
+       <span class="token comment"># profileEnable能够监控单个url调用的sql列表</span>
+       <span class="token key atrule">profileEnable</span><span class="token punctuation">:</span> <span class="token boolean important">true</span>
+</code></pre>
+<h3><a id="3_druid_203"></a>3. druid实现原理</h3>
+<p>具体流程, 请查看源代码:<br/> com.alibaba.druid.filter.config.ConfigFilter<br/> com.alibaba.druid.filter.config.ConfigTools</p>
+<h2><a id="_208"></a>相关错误</h2>
+<ol><li><strong>DER input, Integer tag error</strong><br/> 异常信息:</li></ol>
+<pre><code class="prism language-log">Exception in thread “main” java.security.spec.InvalidKeySpecException: java.security.InvalidKeyException: IOException : DER input, Integer tag error 
+</code></pre>
+<p>这是由于, druid使用的是私钥加密, 公钥解密, 如果反了就会出错, 这也是druid加密不规范的地方, 具体是什么原因请看[参考资料2].</p>
+<ol start="2"><li><strong>Decryption error</strong><br/> 异常信息:</li></ol>
+<pre><code class="prism language-log">javax.crypto.BadPaddingException: Decryption error
+	at sun.security.rsa.RSAPadding.unpadV15(RSAPadding.java:380)
+	at sun.security.rsa.RSAPadding.unpad(RSAPadding.java:291)
+	at com.sun.crypto.provider.RSACipher.doFinal(RSACipher.java:356)
+	at com.sun.crypto.provider.RSACipher.engineDoFinal(RSACipher.java:389)
+	at javax.crypto.Cipher.doFinal(Cipher.java:2165)
+	at com.alibaba.druid.filter.config.ConfigTools.decrypt(ConfigTools.java:151)
+	at com.alibaba.druid.filter.config.ConfigTools.decrypt(ConfigTools.java:65)
+	at com.example.spring.boot.mybatis.util.code.ConfigToolsDemo.demo2(ConfigToolsDemo.java:44)
+	at com.example.spring.boot.mybatis.util.code.ConfigToolsDemo.main(ConfigToolsDemo.java:76)
+</code></pre>
+<p>这是由于, 密码密钥不匹配检查加密解密流程.</p>
+<h2><a id="_233"></a>参考资料</h2>
+<ol><li>druid加密测试类: https://blog.csdn.net/kwaeh/article/details/103213447</li><li>历史原因, 使用私钥加密, 公钥解密. https://github.com/alibaba/druid/issues/960</li><li>druid参考资料: https://github.com/alibaba/druid/wiki/使用ConfigFilter</li></ol>
+</div>
+<link href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/editerView/markdown_views-f23dff6052.css" rel="stylesheet"/>
+<link href="https://csdnimg.cn/release/blogv2/dist/mdeditor/css/style-c216769e99.css" rel="stylesheet"/>
+</div>
+<div id="treeSkill"></div>
+</article>
+<script>
+  $(function() {
+    setTimeout(function () {
+      var mathcodeList = document.querySelectorAll('.htmledit_views img.mathcode');
+      if (mathcodeList.length > 0) {
+        for (let i = 0; i < mathcodeList.length; i++) {
+          if (mathcodeList[i].naturalWidth === 0 || mathcodeList[i].naturalHeight === 0) {
+            var alt = mathcodeList[i].alt;
+            alt = '\\(' + alt + '\\)';
+            var curSpan = $('<span class="img-codecogs"></span>');
+            curSpan.text(alt);
+            $(mathcodeList[i]).before(curSpan);
+            $(mathcodeList[i]).remove();
+          }
+        }
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+      }
+    }, 1000)
+  });
+</script>
+</div></html>
